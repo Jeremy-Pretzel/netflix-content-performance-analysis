@@ -1,0 +1,254 @@
+---
+title: "Netflix Content Performance Analysis"
+author: "Jeremy Precel"
+output:
+  html_document:
+    df_print: paged
+---
+
+# Overview
+
+This project analyses a dataset of 100 Netflix titles to explore differences in audience reach, ratings and viewership consistency across content genres.
+
+The analysis demonstrates data importing, cleaning, validation, transformation, joins and grouped descriptive analysis in R.
+
+The dataset includes both categorical and numeric variables and contains the following fields:
+
+- `show_id` — unique identifier for each title
+- `title` — title name
+- `type` — Movie or TV Show
+- `release_year` — year of release
+- `genre` — content genre
+- `production_country` — country associated with the title
+- `rating` — audience rating score
+- `duration_min` — duration in minutes
+- `views_millions` — estimated views in millions
+
+The dataset used for this analysis contains **100 titles and 9 variables**.
+
+# Setup
+
+```{r setup, message=FALSE, warning=FALSE}
+library(readr)
+library(dplyr)
+library(knitr)
+```
+
+# Import Data
+
+The dataset was imported from a CSV file using `read_csv()`.
+
+The original `country` variable was renamed to `production_country` to make the variable name more descriptive.
+
+```{r import-data}
+netflix_dataset <- read_csv("netflix_dataset.csv")
+
+netflix_dataset <- netflix_dataset %>%
+  rename(production_country = country)
+```
+
+# Data Inspection
+
+The structure and dimensions of the dataset were inspected to confirm the number of observations, variables and data types.
+
+```{r inspect-data}
+str(netflix_dataset)
+
+dim(netflix_dataset)
+
+names(netflix_dataset)
+```
+
+The dataset contains **100 observations and 9 variables**.
+
+Categorical variables were converted from character values to factors because they represent defined categories.
+
+```{r convert-factors}
+netflix_dataset$type <- as.factor(netflix_dataset$type)
+netflix_dataset$genre <- as.factor(netflix_dataset$genre)
+netflix_dataset$production_country <- as.factor(
+  netflix_dataset$production_country
+)
+
+str(netflix_dataset)
+```
+
+# Data Quality Checks
+
+The dataset was checked for missing values and category consistency.
+
+```{r data-quality}
+colSums(is.na(netflix_dataset))
+
+levels(netflix_dataset$type)
+
+levels(netflix_dataset$genre)
+
+levels(netflix_dataset$production_country)
+```
+
+No missing values were identified in the dataset.
+
+The dataset already follows a tidy structure:
+
+- each row represents one title
+- each column represents one variable
+- each cell contains one value
+
+No reshaping was required before analysis.
+
+# Genre Lookup Table
+
+A genre lookup table was created to assign a numeric identifier to each genre.
+
+```{r genre-lookup}
+genre_list <- list(
+  genre = c(
+    "Action",
+    "Comedy",
+    "Documentary",
+    "Drama",
+    "Romance",
+    "Sci-Fi",
+    "Thriller"
+  ),
+  genre_id = c(1, 2, 3, 4, 5, 6, 7)
+)
+
+genre_lookup <- data.frame(genre_list)
+
+genre_lookup
+```
+
+The lookup table was joined to the main dataset using `left_join()`.
+
+```{r join-data}
+netflix_dataset <- left_join(
+  netflix_dataset,
+  genre_lookup,
+  by = "genre"
+)
+
+head(netflix_dataset)
+```
+
+# Genre Performance Analysis
+
+Grouped descriptive statistics were calculated to compare viewership and audience ratings across genres.
+
+The analysis includes:
+
+- number of titles
+- mean viewership
+- median viewership
+- minimum viewership
+- maximum viewership
+- standard deviation of viewership
+- average audience rating
+
+```{r genre-summary}
+genre_summary <- netflix_dataset %>%
+  group_by(genre) %>%
+  summarise(
+    Count = n(),
+    Mean_views = mean(views_millions),
+    Median_views = median(views_millions),
+    Minimum_views = min(views_millions),
+    Maximum_views = max(views_millions),
+    Standard_deviation = sd(views_millions),
+    Average_rating = mean(rating)
+  ) %>%
+  arrange(desc(Mean_views))
+
+genre_summary
+```
+
+# Average Viewership by Genre
+
+The grouped analysis shows substantial differences in average audience reach across genres.
+
+Documentary recorded the highest average viewership at approximately **155.05 million views**, closely followed by Sci-Fi at approximately **153.12 million**.
+
+Drama recorded the lowest average viewership at approximately **85.99 million views**.
+
+```{r viewership-table}
+genre_summary %>%
+  select(
+    genre,
+    Count,
+    Mean_views,
+    Median_views,
+    Standard_deviation
+  ) %>%
+  kable(
+    digits = 2,
+    caption = "Viewership Performance by Genre"
+  )
+```
+
+# Audience Ratings
+
+Audience ratings were relatively similar across genres compared with the differences observed in viewership.
+
+Thriller achieved the highest average rating at approximately **7.66**, despite ranking below several genres in average viewership.
+
+Documentary generated the highest average viewership but had an average rating of approximately **6.95**.
+
+```{r ratings-table}
+genre_summary %>%
+  select(
+    genre,
+    Mean_views,
+    Average_rating
+  ) %>%
+  kable(
+    digits = 2,
+    caption = "Average Viewership and Audience Rating by Genre"
+  )
+```
+
+# Viewership Variation
+
+Standard deviation was used to compare how consistent viewership was within each genre.
+
+Documentary recorded the lowest viewership variation at approximately **57.24 million**, indicating that viewership was comparatively consistent across the Documentary titles in this dataset.
+
+Thriller recorded the highest variation at approximately **76.71 million**, indicating greater differences in audience size between Thriller titles.
+
+```{r variation-table}
+genre_summary %>%
+  select(
+    genre,
+    Mean_views,
+    Standard_deviation
+  ) %>%
+  arrange(Standard_deviation) %>%
+  kable(
+    digits = 2,
+    caption = "Viewership Variation by Genre"
+  )
+```
+
+# Key Findings
+
+The analysis produced several notable findings.
+
+**Audience Reach**
+
+Documentary and Sci-Fi generated the highest average viewership within the dataset.
+
+**Ratings vs Popularity**
+
+The highest-rated genre was not the most-viewed genre. Thriller recorded the highest average audience rating, while Documentary recorded the highest average viewership.
+
+This suggests that audience ratings and audience reach represent different dimensions of content performance.
+
+**Content Consistency**
+
+Documentary combined the highest average viewership with the lowest standard deviation, making it the most consistently viewed genre among the seven genres analysed.
+
+# Scope
+
+This analysis is based on a dataset of **100 Netflix titles**.
+
+The findings should therefore be interpreted as observations from this sample and should not be treated as representative of Netflix's complete catalogue.
